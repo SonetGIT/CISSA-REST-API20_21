@@ -7,7 +7,6 @@ using Intersoft.CISSA.DataAccessLayer.Model.Query.Builders;
 using Intersoft.CISSA.DataAccessLayer.Model.Query.Sql;
 using System.IO;
 using CISSA_REST_API.Models;
-using Domain.ResponseTypes;
 
 namespace CISSA_REST_API.Util
 {

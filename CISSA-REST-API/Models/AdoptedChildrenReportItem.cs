@@ -1,12 +1,11 @@
-﻿using Domain.ResponseTypes;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 
 namespace CISSA_REST_API.Models
 {
-    public class AdoptedChildrenReportItem : IAdoptedChildrenReportItem
+    public class AdoptedChildrenReportItem
     {
         public int No { get; set; }
         public string Name { get; set; }

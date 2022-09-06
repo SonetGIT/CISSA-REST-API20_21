@@ -7,6 +7,8 @@ using System.Web.Http;
 using System.Web.Http.Description;
 using CISSA_REST_API.Models;
 using CISSA_REST_API.Util;
+using Intersoft.CISSA.DataAccessLayer.Model.Context;
+using Intersoft.CISSA.DataAccessLayer.Model.Workflow;
 
 namespace CISSA_REST_API.Controllers
 {
@@ -521,6 +523,22 @@ namespace CISSA_REST_API.Controllers
                 var context = ReportExecutor.CreateContext(userObj.UserName, userObj.Id);
                 var result = ReportExecutor.Report_F8SVOD.Execute(context, fd, ld);
                 return Ok(result.ToArray());
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.GetBaseException().Message);
+            }
+        }
+        //ПА отчеты
+        [HttpGet]
+        [ResponseType(typeof(ReportExecutor.ReportPA_2022.ReportPA22Item[]))]
+        public IHttpActionResult ReportPA_2022([FromUri] Guid userId, [FromUri] DateTime fd, [FromUri] DateTime ld)
+        {
+            try
+            {
+                var context = new WorkflowContext(new WorkflowContextData(Guid.Empty, userId), new DataContext((System.Data.Entity.Core.EntityClient.EntityConnection)null));
+
+                return Ok(ReportExecutor.ReportPA_2022.Execute(context, fd, ld));
             }
             catch (Exception e)
             {

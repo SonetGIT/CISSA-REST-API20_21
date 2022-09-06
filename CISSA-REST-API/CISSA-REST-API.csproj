@@ -54,20 +54,17 @@
     <Reference Include="Apache.Ignite.Core, Version=2.7.0.33575, Culture=neutral, PublicKeyToken=a487a7ff0b2aaa4a, processorArchitecture=MSIL">
       <HintPath>..\packages\Apache.Ignite.2.7.0\lib\net40\Apache.Ignite.Core.dll</HintPath>
     </Reference>
-    <Reference Include="Domain">
-      <HintPath>D:\Interactions\x-road\xRoadLib\Domain\bin\Debug\netstandard2.0\Domain.dll</HintPath>
-    </Reference>
     <Reference Include="Intersoft.CISSA.BizService">
-      <HintPath>D:\My_Applications\CISSASupport\ConsoleApplicationNew\bin\Debug\Intersoft.CISSA.BizService.dll</HintPath>
+      <HintPath>..\newdlls\Intersoft.CISSA.BizService.dll</HintPath>
     </Reference>
     <Reference Include="Intersoft.CISSA.DataAccessLayer">
-      <HintPath>D:\My_Applications\CISSASupport\ConsoleApplicationNew\bin\Debug\Intersoft.CISSA.DataAccessLayer.dll</HintPath>
+      <HintPath>..\newdlls\Intersoft.CISSA.DataAccessLayer.dll</HintPath>
     </Reference>
     <Reference Include="Intersoft.CISSA.PdfFiller">
-      <HintPath>D:\My_Applications\CISSASupport\ConsoleApplicationNew\bin\Debug\Intersoft.CISSA.PdfFiller.dll</HintPath>
+      <HintPath>..\newdlls\Intersoft.CISSA.PdfFiller.dll</HintPath>
     </Reference>
     <Reference Include="Intersoft.Cissa.Report">
-      <HintPath>D:\My_Applications\CISSASupport\ConsoleApplicationNew\bin\Debug\Intersoft.Cissa.Report.dll</HintPath>
+      <HintPath>..\newdlls\Intersoft.Cissa.Report.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51">
@@ -75,13 +72,13 @@
     </Reference>
     <Reference Include="NPOI, Version=1.2.3.0, Culture=neutral, PublicKeyToken=0df73ec7942b34e1, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\My_Applications\CISSASupport\ConsoleApplicationNew\bin\Debug\NPOI.dll</HintPath>
+      <HintPath>..\newdlls\NPOI.dll</HintPath>
     </Reference>
     <Reference Include="Raven.Abstractions">
-      <HintPath>D:\My_Applications\CISSASupport\ConsoleApplicationNew\bin\Debug\Raven.Abstractions.dll</HintPath>
+      <HintPath>..\newdlls\Raven.Abstractions.dll</HintPath>
     </Reference>
     <Reference Include="Raven.Client.Lightweight">
-      <HintPath>D:\My_Applications\CISSASupport\ConsoleApplicationNew\bin\Debug\Raven.Client.Lightweight.dll</HintPath>
+      <HintPath>..\newdlls\Raven.Client.Lightweight.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
