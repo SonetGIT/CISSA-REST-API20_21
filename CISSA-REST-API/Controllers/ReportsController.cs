@@ -532,13 +532,16 @@ namespace CISSA_REST_API.Controllers
         //ПА отчеты
         [HttpGet]
         [ResponseType(typeof(ReportExecutor.ReportPA_2022.ReportPA22Item[]))]
-        public IHttpActionResult ReportPA_2022([FromUri] Guid userId, [FromUri] DateTime fd, [FromUri] DateTime ld)
+        public IHttpActionResult ReportPA_2022([FromUri] Guid userId, [FromUri] int year, [FromUri] int month)
         {
             try
             {
-                var context = new WorkflowContext(new WorkflowContextData(Guid.Empty, userId), new DataContext((System.Data.Entity.Core.EntityClient.EntityConnection)null));
+                //var context = new WorkflowContext(new WorkflowContextData(Guid.Empty, userId), new DataContext((System.Data.Entity.Core.EntityClient.EntityConnection)null));
+                var userObj = DAL.GetCissaUsers().FirstOrDefault(x => x.Id == userId);
+                if (userObj == null) throw new Exception("User not found!");
+                var context = ReportExecutor.CreateContext(userObj.UserName, userObj.Id);
 
-                return Ok(ReportExecutor.ReportPA_2022.Execute(context, fd, ld));
+                return Ok(ReportExecutor.ReportPA_2022.Execute(context, year, month));
             }
             catch (Exception e)
             {

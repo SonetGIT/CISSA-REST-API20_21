@@ -10,9 +10,9 @@ namespace CISSA_REST_API.Models
     public static class DAL
     {
 
-        const string meta_DB_connectionString = "Data Source=192.168.0.2;Initial Catalog=cissa-meta;Password=QQQwww123;Persist Security Info=True;User ID=sa;MultipleActiveResultSets=True;Max Pool Size=3500;Connect Timeout=300;";
-        const string data_DB_connectionString = "Data Source=192.168.0.2;Initial Catalog=cissa-data;Password=QQQwww123;Persist Security Info=True;User ID=sa;MultipleActiveResultSets=True;Max Pool Size=3500;Connect Timeout=300;";
-        const string cissa_DB_connectionString = "Data Source=192.168.0.2;Initial Catalog=cissa;Password=QQQwww123;Persist Security Info=True;User ID=sa;MultipleActiveResultSets=True;Max Pool Size=3500;Connect Timeout=300;";
+        const string meta_DB_connectionString = "Data Source=10.20.1.23;Initial Catalog=cissa-meta;Password=QQQwww123;Persist Security Info=True;User ID=sa;MultipleActiveResultSets=True;Max Pool Size=3500;Connect Timeout=300;";
+        const string data_DB_connectionString = "Data Source=10.20.1.44;Initial Catalog=cissa-data;Password=QQQwww123;Persist Security Info=True;User ID=sa;MultipleActiveResultSets=True;Max Pool Size=3500;Connect Timeout=300;";
+        const string cissa_DB_connectionString = "Data Source=10.20.1.23;Initial Catalog=cissa;Password=QQQwww123;Persist Security Info=True;User ID=sa;MultipleActiveResultSets=True;Max Pool Size=3500;Connect Timeout=300;";
 
         public static string GetClassName(Guid id)
         {

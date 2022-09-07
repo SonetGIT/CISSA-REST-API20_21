@@ -26242,15 +26242,15 @@ namespace CISSA_REST_API.Util
             {
                 new Guid ("{A99E469A-E8D4-4139-B89A-CE4AF6AA0733}")
             };
-            public static List<ReportPA22Item> Execute(WorkflowContext context, DateTime fd, DateTime ld)
+            public static List<ReportPA22Item> Execute(WorkflowContext context, int year, int month)
             {
-                return CalcItems(context, fd, ld);
+                return CalcItems(context, year, month);
             }
-            public static List<ReportPA22Item> CalcItems(WorkflowContext context, DateTime fd, DateTime ld)
+            public static List<ReportPA22Item> CalcItems(WorkflowContext context, int year, int month)
             {
                 var items = new List<ReportPA22Item>();
                 var qb = new QueryBuilder(assistentDefId, context.UserId);
-                qb.Where("RegDate").Ge(fd).And("RegDate").Le(ld);
+                //qb.Where("RegDate").Ge(fd).And("RegDate").Le(ld);
 
                 var query = SqlQueryBuilder.Build(context.DataContext, qb.Def);
                 var personSrc = query.JoinSource(query.Source, personDefId, SqlSourceJoinType.Inner, "Person");
