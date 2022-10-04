@@ -26144,6 +26144,10 @@ namespace CISSA_REST_API.Util
         {
             private static readonly Guid assistentDefId = new Guid("{206818C2-7F8D-4090-A9BA-B39C666CD0EF}");
             private static readonly Guid personDefId = new Guid("{D71CE61A-9B59-4B5E-8713-8131DBB5BA02}");
+            private static readonly Guid childPADefId = new Guid("{E299F9FF-96E8-4CE1-BC16-FB8FCEEB0CFA}");
+            private static readonly Guid adultsPADefId = new Guid("{E299F9FF-96E8-4CE1-BC16-FB8FCEEB0CFA}");
+
+
 
             private static readonly Guid approvedStateId = new Guid("{9A1F1E23-1E8B-4830-AD99-1D0AB3272564}");  //утвержден
 
@@ -26242,22 +26246,95 @@ namespace CISSA_REST_API.Util
             {
                 new Guid ("{A99E469A-E8D4-4139-B89A-CE4AF6AA0733}")
             };
-            public static List<ReportPA22Item> Execute(WorkflowContext context, int year, int month)
+            public static List<RowReportItem> Execute(WorkflowContext context, int year, int month)
             {
-                return CalcItems(context, year, month);
+                List<RowReportItem> rowReportItems = new List<RowReportItem>();
+
+                var item1 = CalcItems(context, year, month, childPADefId);
+                var item2 = CalcItems(context, year, month, adultsPADefId);
+                List<ReportItem> items = new List<ReportItem>();
+                items.AddRange(item1);
+                items.AddRange(item2);
+
+                var orgs = items.Select(x => x.OrgId).Distinct();
+                foreach (var orgId in orgs)
+                {
+                    var childCount = item1.Where(x => x.OrgId.Equals(orgId)).Count();
+                    var adultCount = item2.Where(x => x.OrgId.Equals(orgId)).Count();
+                    var regionName = GetRegionName(orgId);
+                    var orgName = context.Orgs.GetOrgName(orgId);
+                    RowReportItem rowReportItem = new RowReportItem
+                    {
+                        RegionName = regionName,
+                        OrgName = orgName,
+                        AssistantCount = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => x.AssistantPIN).Count(),
+                        ChildCount = childCount,
+                        AdultCount = adultCount,
+                        TotalChildCount = childCount + adultCount,
+                        PatentSum = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => new { x.AssistantPIN }).Select(s => s.FirstOrDefault()).Sum(y => y.PatentSum),
+                        InsuranceSum = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => new { x.AssistantPIN }).Select(s => s.FirstOrDefault()).Sum(y => y.InsuranceSum),
+                        PaymentSumTotal = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => new { x.AssistantPIN }).Select(s => s.FirstOrDefault()).Sum(y => y.PaymentSumTotal),
+                        BankServiceSum = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => new { x.AssistantPIN }).Select(s => s.FirstOrDefault()).Sum(y => y.BankServiceSum),
+                        TotalPaymentSumFromBeginOfYear = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => new { x.AssistantPIN }).Select(s => s.FirstOrDefault()).Sum(y => y.TotalPaymentSumFromBeginOfYear)
+                    };
+                    rowReportItems.Add(rowReportItem);
+                }
+
+                return rowReportItems;
             }
-            public static List<ReportPA22Item> CalcItems(WorkflowContext context, int year, int month)
+
+
+            private static int CalculateAge(DateTime birthDate)
             {
-                var items = new List<ReportPA22Item>();
-                var qb = new QueryBuilder(assistentDefId, context.UserId);
-                //qb.Where("RegDate").Ge(fd).And("RegDate").Le(ld);
+                var now = DateTime.Now;
+                int age = now.Year - birthDate.Year;
+
+                if (now.Month < birthDate.Month || (now.Month == birthDate.Month && now.Day < birthDate.Day))
+                    age--;
+
+                return age;
+            }
+
+
+            private static string GetRegionName(Guid orgId)
+            {
+                string orgName = "";
+                if (bishkekList.Contains(orgId)) orgName = "г.Бишкек";
+                if (chuiList.Contains(orgId)) orgName = "Чуйская область";
+                if (talasList.Contains(orgId)) orgName = "Таласская область";
+                if (issyk_kulList.Contains(orgId)) orgName = "Иссык-Кульская область";
+                if (narynList.Contains(orgId)) orgName = "Нарынская область";
+                if (batkenList.Contains(orgId)) orgName = "Баткенская область";
+                if (oshList.Contains(orgId)) orgName = "Ошская область";
+                if (osh.Contains(orgId)) orgName = "г.Ош";
+                if (jalal_abad.Contains(orgId)) orgName = "Джалал-Абадская область";
+                return orgName;
+            }
+
+
+            private static List<ReportItem> CalcItems(WorkflowContext context, int year, int month, Guid itemDefId)
+            {
+                var fd = new DateTime(year, 1, 1);
+                var ld = new DateTime(year, month, DateTime.DaysInMonth(year, month)).AddDays(1);
+                var items = new List<ReportItem>();
+                var qb = new QueryBuilder(itemDefId, context.UserId);
 
                 var query = SqlQueryBuilder.Build(context.DataContext, qb.Def);
-                var personSrc = query.JoinSource(query.Source, personDefId, SqlSourceJoinType.Inner, "Person");
+                var assistentSrc = query.JoinSource(query.Source, assistentDefId, SqlSourceJoinType.Inner, "PersonalAssistant");
+                query.AndCondition(assistentSrc, "RegDate", ConditionOperation.GreatEqual, fd);
+                query.AndCondition(assistentSrc, "RegDate", ConditionOperation.LessEqual, ld);
+                var personSrc = query.JoinSource(assistentSrc, personDefId, SqlSourceJoinType.Inner, "Person");
 
                 query.AddAttribute(query.Source, "&OrgId");
                 query.AddAttribute(query.Source, "&Id");
+                query.AddAttribute(query.Source, "PIN");
+                query.AddAttribute(query.Source, "ExaminationDate");
                 query.AddAttribute(personSrc, "PIN");
+                query.AddAttribute(assistentSrc, "PatentSum");
+                query.AddAttribute(assistentSrc, "InsuranceSum");
+                query.AddAttribute(assistentSrc, "PaymentSumTotal");
+                query.AddAttribute(personSrc, "LastName");
+
                 query.AddOrderAttribute(query.Source, "&OrgName");
 
                 var table = new DataTable();
@@ -26269,97 +26346,112 @@ namespace CISSA_REST_API.Util
                 }
                 foreach (DataRow row in table.Rows)
                 {
-                    var orgId = row[0] is DBNull ? Guid.Empty : (Guid)row[0];
-                    var appId = row[1] is DBNull ? Guid.Empty : (Guid)row[1];
-                    var psnPIN = row[2] is DBNull ? "" : row[2].ToString();
-
-                    var orgNameRayon = context.Orgs.GetOrgName(orgId);
-                    var rayon = GetReportItem(items, orgNameRayon, orgId);
-
-                    if (appId != Guid.Empty)
+                    double patentSum = 0, insuranceSum = 0, paymentSumTotal = 0;
+                    try
                     {
-                        if (psnPIN != null)
-                            rayon.gr1 = psnPIN;
-                    }
-                }
+                        var orgId = row[0] is DBNull ? Guid.Empty : (Guid)row[0];
+                        var appId = row[1] is DBNull ? Guid.Empty : (Guid)row[1];
+                        var childPIN = row[2] is DBNull ? "" : row[2].ToString();
+                        var examinationDate = row[3] is DBNull ? DateTime.Now : Convert.ToDateTime(row[3]);
+                        var assistantPIN = row[4] is DBNull ? "" : row[4].ToString();
+                        if (row[5] is DBNull)
+                            patentSum = 0;
+                        else Double.TryParse(row[5].ToString(), out patentSum);
 
-                // RegionReportItem regionReportItem = new RegionReportItem();
-                foreach (var subItem in items)
-                {
-                    if (bishkekList.Contains(subItem.GetOrgId())) subItem.RegionName = "аг.Бишкек";
-                    //regionReportItem.BishkekCityRegion.Add(subItem);
-                    if (chuiList.Contains(subItem.GetOrgId())) subItem.RegionName = "аЧуйская область";
-                    //regionReportItem.ChuyRegion.Add(subItem);
-                    if (talasList.Contains(subItem.GetOrgId())) subItem.RegionName = "бТаласская область";
-                    //regionReportItem.TalasRegion.Add(subItem);
-                    if (issyk_kulList.Contains(subItem.GetOrgId())) subItem.RegionName = "вИссык-Кульская область";
-                    //regionReportItem.YssykKolRegion.Add(subItem);
-                    if (narynList.Contains(subItem.GetOrgId())) subItem.RegionName = "гНарынская область";
-                    //regionReportItem.NarynRegion.Add(subItem);
-                    if (batkenList.Contains(subItem.GetOrgId())) subItem.RegionName = "дБаткенская область";
-                    //regionReportItem.BatkenRegion.Add(subItem);
-                    if (oshList.Contains(subItem.GetOrgId())) subItem.RegionName = "еОшская область";
-                    //regionReportItem.OshRegion.Add(subItem);
-                    if (osh.Contains(subItem.GetOrgId())) subItem.RegionName = "жг.Ош";
-                    //regionReportItem.OshCityRegion.Add(subItem);
-                    if (jalal_abad.Contains(subItem.GetOrgId())) subItem.RegionName = "зДжалал-Абадская область";
-                    //regionReportItem.JalalAbadRegion.Add(subItem);
+                        if (row[6] is DBNull)
+                            insuranceSum = 0;
+                        else Double.TryParse(row[6].ToString(), out insuranceSum);
+
+                        if (row[7] is DBNull)
+                            paymentSumTotal = 0;
+                        else Double.TryParse(row[7].ToString(), out paymentSumTotal);
+
+                        var assistantLastName = row[8] is DBNull ? "" : row[8].ToString();
+
+                        if (appId != Guid.Empty)
+                        {
+                            var bankServiceSum = (paymentSumTotal / 100) * 0.5;
+                            ReportItem reportItem = new ReportItem()
+                            {
+                                OrgId = orgId,
+                                ChildPIN = childPIN,
+                                AssistantPIN = assistantPIN,
+                                AssistantLastName = assistantLastName,
+                                ChildAge = CalculateAge(examinationDate),
+                                PatentSum = patentSum,
+                                InsuranceSum = insuranceSum,
+                                PaymentSumTotal = paymentSumTotal,
+                                BankServiceSum = bankServiceSum,
+                                TotalPaymentSumFromBeginOfYear = paymentSumTotal + bankServiceSum
+                            };
+                            items.Add(reportItem);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        var row_error = row;
+                    }
+
                 }
                 return items;
+            }
+
+            public class RowReportItem
+            {
+                public string RegionName { get; set; }
+                public string OrgName { get; set; }
+                public int AssistantCount { get; set; }
+                public int TotalChildCount { get; set; }
+                public int ChildCount { get; set; }
+                public int AdultCount { get; set; }
+                public double PatentSum { get; set; }
+                public double InsuranceSum { get; set; }
+                public double PaymentSumTotal { get; set; }
+                public double BankServiceSum { get; set; }
+                public double TotalPaymentSumFromBeginOfYear { get; set; }
             }
             public class RegionReportItem
             {
                 public RegionReportItem()
                 {
-                    ChuyRegion = new List<ReportPA22Item>();
-                    YssykKolRegion = new List<ReportPA22Item>();
-                    NarynRegion = new List<ReportPA22Item>();
-                    TalasRegion = new List<ReportPA22Item>();
-                    OshRegion = new List<ReportPA22Item>();
-                    JalalAbadRegion = new List<ReportPA22Item>();
-                    BatkenRegion = new List<ReportPA22Item>();
-                    BishkekCityRegion = new List<ReportPA22Item>();
-                    OshCityRegion = new List<ReportPA22Item>();
+                    ChuyRegion = new List<ReportItem>();
+                    YssykKolRegion = new List<ReportItem>();
+                    NarynRegion = new List<ReportItem>();
+                    TalasRegion = new List<ReportItem>();
+                    OshRegion = new List<ReportItem>();
+                    JalalAbadRegion = new List<ReportItem>();
+                    BatkenRegion = new List<ReportItem>();
+                    BishkekCityRegion = new List<ReportItem>();
+                    OshCityRegion = new List<ReportItem>();
                 }
-                public List<ReportPA22Item> ChuyRegion { get; set; }
-                public List<ReportPA22Item> YssykKolRegion { get; set; }
-                public List<ReportPA22Item> NarynRegion { get; set; }
-                public List<ReportPA22Item> TalasRegion { get; set; }
-                public List<ReportPA22Item> OshRegion { get; set; }
-                public List<ReportPA22Item> JalalAbadRegion { get; set; }
-                public List<ReportPA22Item> BatkenRegion { get; set; }
-                public List<ReportPA22Item> BishkekCityRegion { get; set; }
-                public List<ReportPA22Item> OshCityRegion { get; set; }
+                public List<ReportItem> ChuyRegion { get; set; }
+                public List<ReportItem> YssykKolRegion { get; set; }
+                public List<ReportItem> NarynRegion { get; set; }
+                public List<ReportItem> TalasRegion { get; set; }
+                public List<ReportItem> OshRegion { get; set; }
+                public List<ReportItem> JalalAbadRegion { get; set; }
+                public List<ReportItem> BatkenRegion { get; set; }
+                public List<ReportItem> BishkekCityRegion { get; set; }
+                public List<ReportItem> OshCityRegion { get; set; }
             }
-            static ReportPA22Item GetReportItem(List<ReportPA22Item> items, string orgName, Guid orgId)
-            {
-                var item = items.FirstOrDefault(x => x.OrgName == orgName);
-                if (item != null) return item;
-                item = new ReportPA22Item(orgId)
-                {
-                    OrgName = orgName,
-                };
-                items.Add(item);
-                return item;
-            }
-            public class ReportPA22Item
+
+            public class ReportItem
             {
                 public string RegionName { get; set; }
-                public string OrgName { get; set; }
-                private Guid OrgId { get; set; }
-                public string gr1 { get; set; }
-                public int gr2 { get; set; }
 
-                public ReportPA22Item(Guid orgId)
-                {
-                    OrgId = orgId;
-                }
-                public Guid GetOrgId()
-                {
-                    return OrgId;
-                }
+                public Guid OrgId { get; set; }
+                public string ChildPIN { get; set; }
+                public string AssistantPIN { get; set; }
+                public string AssistantLastName { get; set; }
+                public int ChildAge { get; set; }
+                public double PatentSum { get; set; }
+                public double InsuranceSum { get; set; }
+                public double PaymentSumTotal { get; set; }
+                public double BankServiceSum { get; set; }
+                public double TotalPaymentSumFromBeginOfYear { get; set; }
+
             }
-        }        
+        }
     }
 }
 
