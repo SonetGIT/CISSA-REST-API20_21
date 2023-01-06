@@ -531,7 +531,7 @@ namespace CISSA_REST_API.Controllers
         }
         //ПА отчеты
         [HttpGet]
-        [ResponseType(typeof(ReportExecutor.ReportPA_2022.ReportPA22Item[]))]
+        [ResponseType(typeof(ReportExecutor.ReportPA_2022.RowReportItem[]))]
         public IHttpActionResult ReportPA_2022([FromUri] Guid userId, [FromUri] int year, [FromUri] int month)
         {
             try

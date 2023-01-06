@@ -26145,10 +26145,10 @@ namespace CISSA_REST_API.Util
             private static readonly Guid assistentDefId = new Guid("{206818C2-7F8D-4090-A9BA-B39C666CD0EF}");
             private static readonly Guid personDefId = new Guid("{D71CE61A-9B59-4B5E-8713-8131DBB5BA02}");
             private static readonly Guid childPADefId = new Guid("{E299F9FF-96E8-4CE1-BC16-FB8FCEEB0CFA}");
-            private static readonly Guid adultsPADefId = new Guid("{E299F9FF-96E8-4CE1-BC16-FB8FCEEB0CFA}");
-
-
-
+            private static readonly Guid adultsPADefId = new Guid("{CCEEE336-4933-4C0C-873D-AC54D2476A50}");
+            private static readonly Guid patentInfoId = new Guid("{6A357990-40F4-49EC-947A-201E4D12252B}");
+            private static readonly double PAYMENT_SUM = 6268;
+            private static readonly double PAYMENT_SUM_HALF = 3134;
             private static readonly Guid approvedStateId = new Guid("{9A1F1E23-1E8B-4830-AD99-1D0AB3272564}");  //утвержден
 
             public static List<Guid> bishkekList = new List<Guid>//г.Бишкек              
@@ -26263,6 +26263,13 @@ namespace CISSA_REST_API.Util
                     var adultCount = item2.Where(x => x.OrgId.Equals(orgId)).Count();
                     var regionName = GetRegionName(orgId);
                     var orgName = context.Orgs.GetOrgName(orgId);
+                    var documents = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => x.AssistantPIN).Select(group => new { Pin = group.Key, Count = group.Count() }).ToList();
+                    var paymentSum = 0.0;
+                    foreach (var document in documents)
+                    {
+                        paymentSum += PAYMENT_SUM + (PAYMENT_SUM_HALF * (document.Count - 1));
+                    }
+                    var bankServiceSum = (paymentSum / 100) * 0.5;
                     RowReportItem rowReportItem = new RowReportItem
                     {
                         RegionName = regionName,
@@ -26273,9 +26280,11 @@ namespace CISSA_REST_API.Util
                         TotalChildCount = childCount + adultCount,
                         PatentSum = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => new { x.AssistantPIN }).Select(s => s.FirstOrDefault()).Sum(y => y.PatentSum),
                         InsuranceSum = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => new { x.AssistantPIN }).Select(s => s.FirstOrDefault()).Sum(y => y.InsuranceSum),
-                        PaymentSumTotal = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => new { x.AssistantPIN }).Select(s => s.FirstOrDefault()).Sum(y => y.PaymentSumTotal),
-                        BankServiceSum = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => new { x.AssistantPIN }).Select(s => s.FirstOrDefault()).Sum(y => y.BankServiceSum),
-                        TotalPaymentSumFromBeginOfYear = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => new { x.AssistantPIN }).Select(s => s.FirstOrDefault()).Sum(y => y.TotalPaymentSumFromBeginOfYear)
+                        PaymentSumTotal = paymentSum,
+                        //PaymentSumTotal = items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => new { x.AssistantPIN}).Select(s => s.FirstOrDefault()).Sum(y => y.PaymentSumTotal),
+                        BankServiceSum = bankServiceSum,
+                        //items.Where(x => x.OrgId.Equals(orgId)).GroupBy(x => new { x.AssistantPIN}).Select(s => s.FirstOrDefault()).Sum(y => y.BankServiceSum),
+                        TotalPaymentSumFromBeginOfYear = paymentSum + bankServiceSum
                     };
                     rowReportItems.Add(rowReportItem);
                 }
@@ -26314,6 +26323,7 @@ namespace CISSA_REST_API.Util
 
             private static List<ReportItem> CalcItems(WorkflowContext context, int year, int month, Guid itemDefId)
             {
+
                 var fd = new DateTime(year, 1, 1);
                 var ld = new DateTime(year, month, DateTime.DaysInMonth(year, month)).AddDays(1);
                 var items = new List<ReportItem>();
@@ -26321,6 +26331,7 @@ namespace CISSA_REST_API.Util
 
                 var query = SqlQueryBuilder.Build(context.DataContext, qb.Def);
                 var assistentSrc = query.JoinSource(query.Source, assistentDefId, SqlSourceJoinType.Inner, "PersonalAssistant");
+                var patentSrc = query.JoinSource(assistentSrc, patentInfoId, SqlSourceJoinType.Inner, "PersonalAssistant");
                 query.AndCondition(assistentSrc, "RegDate", ConditionOperation.GreatEqual, fd);
                 query.AndCondition(assistentSrc, "RegDate", ConditionOperation.LessEqual, ld);
                 var personSrc = query.JoinSource(assistentSrc, personDefId, SqlSourceJoinType.Inner, "Person");
@@ -26330,13 +26341,13 @@ namespace CISSA_REST_API.Util
                 query.AddAttribute(query.Source, "PIN");
                 query.AddAttribute(query.Source, "ExaminationDate");
                 query.AddAttribute(personSrc, "PIN");
-                query.AddAttribute(assistentSrc, "PatentSum");
-                query.AddAttribute(assistentSrc, "InsuranceSum");
-                query.AddAttribute(assistentSrc, "PaymentSumTotal");
+                query.AddAttribute(patentSrc, "patentSum");
+                query.AddAttribute(patentSrc, "policySum");
+                query.AddAttribute(assistentSrc, "PaymentSum");
                 query.AddAttribute(personSrc, "LastName");
 
                 query.AddOrderAttribute(query.Source, "&OrgName");
-
+                query.AddAttribute(assistentSrc, "&Id");
                 var table = new DataTable();
                 using (var reader = new SqlQueryReader(query))
                 {
@@ -26364,13 +26375,14 @@ namespace CISSA_REST_API.Util
 
                         if (row[7] is DBNull)
                             paymentSumTotal = 0;
-                        else Double.TryParse(row[7].ToString(), out paymentSumTotal);
+                        else paymentSumTotal = 1;
+                        //Double.TryParse(row[7].ToString(), out paymentSumTotal);
 
                         var assistantLastName = row[8] is DBNull ? "" : row[8].ToString();
 
                         if (appId != Guid.Empty)
                         {
-                            var bankServiceSum = (paymentSumTotal / 100) * 0.5;
+                            //var bankServiceSum = (paymentSumTotal / 100) * 0.5;
                             ReportItem reportItem = new ReportItem()
                             {
                                 OrgId = orgId,
@@ -26381,8 +26393,9 @@ namespace CISSA_REST_API.Util
                                 PatentSum = patentSum,
                                 InsuranceSum = insuranceSum,
                                 PaymentSumTotal = paymentSumTotal,
-                                BankServiceSum = bankServiceSum,
-                                TotalPaymentSumFromBeginOfYear = paymentSumTotal + bankServiceSum
+                                BankServiceSum = 1,
+                                TotalPaymentSumFromBeginOfYear = 1,
+
                             };
                             items.Add(reportItem);
                         }
@@ -26449,7 +26462,6 @@ namespace CISSA_REST_API.Util
                 public double PaymentSumTotal { get; set; }
                 public double BankServiceSum { get; set; }
                 public double TotalPaymentSumFromBeginOfYear { get; set; }
-
             }
         }
     }
